@@ -282,7 +282,6 @@ type Conn struct {
 }
 
 func newConn(conn net.Conn, isServer bool, readBufferSize, writeBufferSize int, writeBufferPool BufferPool, br *bufio.Reader, writeBuf []byte) *Conn {
-
 	if br == nil {
 		if readBufferSize == 0 {
 			readBufferSize = defaultReadBufferSize
@@ -390,10 +389,14 @@ func (c *Conn) write(frameType int, deadline time.Time, buf0, buf1 []byte) error
 	if err := c.conn.SetWriteDeadline(deadline); err != nil {
 		return c.writeFatal(err)
 	}
+	cbuf0 := make([]byte, len(buf0))
+	copy(cbuf0, buf0)
 	if len(buf1) == 0 {
-		_, err = c.conn.Write(buf0)
+		_, err = c.conn.Write(cbuf0)
 	} else {
-		err = c.writeBufs(buf0, buf1)
+		cbuf1 := make([]byte, len(buf1))
+		copy(cbuf1, buf1)
+		err = c.writeBufs(cbuf0, cbuf1)
 	}
 	if err != nil {
 		return c.writeFatal(err)
@@ -766,7 +769,6 @@ func (c *Conn) WritePreparedMessage(pm *PreparedMessage) error {
 // WriteMessage is a helper method for getting a writer using NextWriter,
 // writing the message and closing the writer.
 func (c *Conn) WriteMessage(messageType int, data []byte) error {
-
 	if c.isServer && (c.newCompressionWriter == nil || !c.enableWriteCompression) {
 		// Fast path with no allocations and single frame.
 
